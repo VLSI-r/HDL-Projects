@@ -1,0 +1,115 @@
+`timescale 1ns/1ps
+
+module uart_tb;
+
+    reg clk_50m = 0;
+    reg clken = 0;
+    reg wr_en = 0;
+    reg [7:0] din = 0;
+    wire tx, tx_busy;
+    wire rx;
+
+    wire [7:0] dout;
+    wire rd_done;
+
+    assign rx = tx; // Loopback
+
+    // Clock: 50MHz
+    always #10 clk_50m = ~clk_50m;
+
+    // Baud clock enable
+    integer clken_count = 0;
+    always @(posedge clk_50m) begin
+        clken <= (clken_count == 5207);
+        clken_count <= (clken_count == 5207) ? 0 : clken_count + 1;
+    end
+
+    transmitter tx_inst (
+        .din(din),
+        .wr_en(wr_en),
+        .clk_50m(clk_50m),
+        .clken(clken),
+        .tx(tx),
+        .tx_busy(tx_busy)
+    );
+
+    receiver rx_inst (
+        .rx(rx),
+        .clk_50m(clk_50m),
+        .clken(clken),
+        .dout(dout),
+        .rd_done(rd_done)
+    );
+
+    // Manual coverage flags
+    reg [255:0] data_coverage = 0;
+    reg tx_busy_checked = 0;
+    reg [3:0] state_coverage = 0; // 4 states: idle, start, data, stop
+
+    task send_byte(input [7:0] data);
+        begin
+            @(posedge clk_50m);
+            din <= data;
+            wr_en <= 1;
+            @(posedge clk_50m);
+            wr_en <= 0;
+
+            // Check tx_busy goes high
+            while (!tx_busy)
+                @(posedge clk_50m);
+            tx_busy_checked = 1;
+
+            wait(rd_done);
+            @(posedge clk_50m);
+            if (dout === data) begin
+                data_coverage[data] = 1;
+                $display("PASS: Sent %h, Received %h", data, dout);
+            end else
+                $display("FAIL: Sent %h, Received %h", data, dout);
+        end
+    endtask
+
+    // Capture state coverage from transmitter (optional interface)
+    wire [1:0] tx_state = tx_inst.state;
+    always @(posedge clk_50m) begin
+        state_coverage[tx_state] = 1;
+    end
+
+    initial begin
+        $dumpfile("uart_tb.vcd");
+        $dumpvars(0, uart_tb);
+
+        #100;
+
+        // Exhaustive data pattern
+        for (int i = 0; i < 256; i++)
+            send_byte(i[7:0]);
+
+        // Overlapping transmission test
+        repeat (5) begin
+            @(posedge clk_50m);
+            din <= $random;
+            wr_en <= 1;
+            @(posedge clk_50m);
+            wr_en <= 0;
+            wait(rd_done);
+        end
+
+        // Final coverage checks
+        if (&data_coverage)
+            $display("DATA COVERAGE: FULL (All 256 values tested)");
+        else
+            $display("DATA COVERAGE: INCOMPLETE");
+
+        if (tx_busy_checked)
+            $display("tx_busy signal checked");
+
+        if (&state_coverage)
+            $display("TX FSM state coverage: FULL");
+        else
+            $display("TX FSM state coverage: INCOMPLETE");
+
+        #2000;
+        $finish;
+    end
+endmodule

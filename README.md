@@ -10,6 +10,6 @@ you shall find all the projects in their specific folders within this order
 ----> Diagrams 
 ----> RTL Design
 ----> Testbench 
-----> Simulation Results 
+
 
 thank you :) 

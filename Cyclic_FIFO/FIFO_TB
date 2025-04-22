@@ -1,0 +1,116 @@
+`timescale 1ns/1ns
+module tb_fifo_sync();
+
+	parameter FIFO_DEPTH = 8;
+	parameter DATA_WIDTH = 32;
+
+	reg clk = 0;
+	reg rst_n;
+	reg cs;
+	reg wr_en;
+	reg rd_en;
+	reg [DATA_WIDTH-1:0] data_in;
+	wire [DATA_WIDTH-1:0] data_out;
+	wire empty;
+	wire full;
+
+	integer i;
+
+	// Instantiate DUT
+	fifo_sync 
+	    #(.FIFO_DEPTH(FIFO_DEPTH), .DATA_WIDTH(DATA_WIDTH)) dut (
+			.clk(clk),
+			.rst_n(rst_n),
+			.cs(cs),
+			.wr_en(wr_en),
+			.rd_en(rd_en),
+			.data_in(data_in),
+			.data_out(data_out),
+			.empty(empty),
+			.full(full)
+		);
+
+	always #5 clk = ~clk;
+
+	task write_data(input [DATA_WIDTH-1:0] d_in);
+		begin
+			@(posedge clk);
+			cs = 1; wr_en = 1; rd_en = 0;
+			data_in = d_in;
+			@(posedge clk);
+			cs = 0; wr_en = 0;
+		end
+	endtask
+
+	task read_data();
+		begin
+			@(posedge clk);
+			cs = 1; rd_en = 1; wr_en = 0;
+			@(posedge clk);
+			cs = 0; rd_en = 0;
+		end
+	endtask
+
+	task reset_dut();
+		begin
+			cs = 0; wr_en = 0; rd_en = 0;
+			rst_n = 0;
+			@(posedge clk);
+			rst_n = 1;
+		end
+	endtask
+
+	initial begin
+		$dumpfile("dump.vcd"); $dumpvars;
+
+		// Reset
+		reset_dut();
+
+		// 1. Write and Read Normally
+		$display("\nSCENARIO 1: Normal write and read");
+		write_data(5);
+		write_data(15);
+		read_data();
+		read_data();
+
+		// 2. FIFO Full Condition
+		$display("\nSCENARIO 2: Fill FIFO");
+		for (i = 0; i < FIFO_DEPTH; i = i + 1) begin
+			write_data(i + 100);
+		end
+
+		// Overflow
+		write_data(999);
+
+		// 3. FIFO Empty Condition
+		$display("\nSCENARIO 3: Empty FIFO");
+		for (i = 0; i < FIFO_DEPTH; i = i + 1) begin
+			read_data();
+		end
+
+		// Underflow
+		read_data();
+
+		// 4. Write-Read Simultaneous
+		$display("\nSCENARIO 4: Simultaneous write and read");
+		for (i = 0; i < FIFO_DEPTH; i = i + 1) begin
+			@(posedge clk);
+			cs = 1; wr_en = 1; rd_en = 1;
+			data_in = i + 200;
+		end
+		@(posedge clk);
+		cs = 0; wr_en = 0; rd_en = 0;
+
+		// 5. CS Low - Writes/Reads should not happen
+		$display("\nSCENARIO 5: cs=0 should prevent operation");
+		cs = 0; wr_en = 1; data_in = 777;
+		@(posedge clk);
+		cs = 0; wr_en = 0;
+
+		cs = 0; rd_en = 1;
+		@(posedge clk);
+		cs = 0; rd_en = 0;
+
+		#50 $finish;
+	end
+endmodule

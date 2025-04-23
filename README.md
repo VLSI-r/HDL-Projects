@@ -1,6 +1,6 @@
 # VHDL-Projects 
 
-This repositorie contains my projects that I personally think are super cool 
+This repositorie contains my projects that I personally think are super cool,
 My journey with Verilog and SystemVerilog (or with programming in general) is Self-learned. 
 
 

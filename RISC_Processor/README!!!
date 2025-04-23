@@ -1,0 +1,128 @@
+
+HELLOOO! this repository contains a RISC (Reduced Instruction Set Computing) processor implementation using Verilog on AMD Xilinx Vivado 2024.2 by Mohammed Omer
+
+The processor features a 32-bit instruction word format, 16-bit data path, general-purpose registers, and a comprehensive instruction set supporting arithmetic, logical, memory, and control flow operations.
+
+
+- Word Size: 16-bit data path with 32-bit instructions
+- Register File 32 general-purpose 16-bit registers (GPR[0] through GPR[31])
+- Special Register: 16-bit SGPR for storing the high bits of multiplication results
+- Condition Flags: Sign, Zero, Carry, and Overflow flags for conditional branching
+- Memory: Separate program memory (instruction memory) and data memory
+- I/O Interface: 16-bit input and output ports
+
+
+
+The processor uses a fixed 32-bit instruction format with the following fields:
+
+
+<--IR[31:27]--><--IR[26:22]--><--IR[21:17]--><--IR[16]--><--IR[15:11]--><--IR[10:0]-->
+<---  oper  --><--   rdst  --><--  rsrc1  --><--modesel--><--  rsrc2  --><--unused  -->
+                                                        OR
+<---  oper  --><--   rdst  --><--  rsrc1  --><--modesel--><--    immediate_data    -->
+```
+
+- oper_type [31:27]: 5-bit operation code
+- rdst [26:22]: 5-bit destination register address
+- rsrc1 [21:17]: 5-bit source register 1 address
+- imm_mode [16]: 1-bit immediate mode selector (0 = register mode, 1 = immediate mode)
+- rsrc2 [15:11]: 5-bit source register 2 address (used when imm_mode = 0)
+- isrc [15:0]: 16-bit immediate value (used when imm_mode = 1)
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!INTRUCTION SET!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+### Data Movement Instructions
+- 00000 (MOVSGPR): Move special register to destination register
+- 00001 (MOV): Move data between registers or load immediate value
+
+### Arithmetic Operations
+- 00010 (ADD): Addition
+- 00011 (SUB): Subtraction
+- 00100 (MUL): Multiplication (16-bit × 16-bit → 32-bit result)
+
+### Logical Operations
+- 00101 (ROR): Bitwise OR
+- 00110 (RAND): Bitwise AND
+- 00111 (RXOR): Bitwise XOR
+- 01000 (RXNOR): Bitwise XNOR
+- 01001 (RNAND): Bitwise NAND
+- 01010 (RNOR): Bitwise NOR
+- 01011 (RNOT): Bitwise NOT
+
+### Memory Operations
+- 01101` (STOREREG): Store register content in data memory
+- 01110` (STOREDIN): Store input port data in data memory
+- 01111` (SENDDOUT): Send data from memory to output port
+- 10001` (SENDREG): Load data from memory to register
+### Control Flow Instructions
+- 10010` (JUMP): Unconditional jump
+- 10011` (JCARRY): Jump if carry flag is set
+- 10100` (JNOCARRY): Jump if carry flag is clear
+- 10101` (JSIGN): Jump if sign flag is set
+- 10110` (JNOSIGN): Jump if sign flag is clear
+- 10111` (JZERO): Jump if zero flag is set
+- 11000` (JNOZERO): Jump if zero flag is clear
+- 11001` (JOVERFLOW): Jump if overflow flag is set
+- 11010` (JNOOVERFLOW): Jump if overflow flag is clear
+- 11011` (HALT): Stop program execution
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+The processor maintains four condition flags that are updated after arithmetic and logical operations:
+
+- Sign Flag: Set when the most significant bit of the result is 1
+- Zero Flag: Set when the result is zero
+- Carry Flag: Set when an addition produces a carry-out
+- Overflow Flag: Set when an arithmetic operation causes twos-complement overflow
+
+
+The processor implements a finite state machine with the following states:
+
+1. IDLE: Reset state initialization
+2. FETCH_INST: Load instruction from program memory
+3. DEC_EXEC_INST: Decode and execute the instruction
+4. DELAY_NEXT_INST: Wait state for execution completion
+5. NEXT_INST: Update program counter
+6. SENSE_HALT: Check for HALT instruction
+
+
+Programs are loaded into instruction memory from a "data.mem" file in binary format.
+
+
+1. Reset the processor to initialize state
+2. The processor fetches, decodes, and executes instructions sequentially
+3. Branching instructions may alter the program flow
+4. The HALT instruction stops program execution
+
+
+```
+// Example program to add two numbers and store result
+// Instruction format: [opcode][rdst][rsrc1][imm_mode][rsrc2/immediate]
+
+// Load values into R1 and R2
+00001_00001_00000_1_0000000000001010  // MOV R1, #10
+00001_00010_00000_1_0000000000000101  // MOV R2, #5
+
+// Add R1 and R2, store in R3
+00010_00011_00001_0_00010_00000000000  // ADD R3, R1, R2
+
+// Store result in memory address 0
+01101_00000_00011_1_0000000000000000  // STOREREG [0], R3
+
+// Halt execution
+11011_00000_00000_0_00000_00000000000  // HALT
+```
+
+
+The top module interfaces with the system clock, reset signal, and 16-bit input/output buses. Internal components include the register file, ALU, control unit, and memory subsystems, all synchronized through the central state machine.
+
+
+
+
+
+Please refer to the png files for better understanding, Feel free to reachout to me on my LinkedIn (link is attached to the account)
+THANK YOU!
+:)

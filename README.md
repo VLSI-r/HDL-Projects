@@ -8,7 +8,7 @@ My journey with Verilog and SystemVerilog (or with programming in general) is Se
 
 My focus here is primarily on V/SV design and verification of common beginner IPs.
 
-Please feel free to reachout to me on 
+Please feel free to reachout on 
 
 
 LinkedIn : www.linkedin.com/in/mhdomer

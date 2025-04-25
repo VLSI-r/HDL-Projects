@@ -1,0 +1,57 @@
+Synchronous  Circular FIFO (First-In-First-Out) Buffer
+
+This project implements a synchronous FIFO using Verilog, including a robust testbench to validate functionality under different scenarios. The FIFO is parameterized to support varying depths and data widths.
+The reason why i chose a fifo is becouse fifos are used constantly in various CPU microarchitectures. So yeah :)
+
+////////////////////////////////////////////////Parameters//////////////////////////////////////////////
+
+although its not necessasary to use a paramater here, ive done it to get used to good coding practices! and adding it makes the design more flexible and easily customizable! 
+
+- FIFO_DEPTH: Number of entries in the FIFO (default: 8)
+- DATA_WIDTH: Bit-width of each data word (default: 32)
+
+///////////////////////////////////////////////Ports///////////////////////////////////////////////////
+
+- clk (Input) : Clock signal
+- rst_n (Input) : Active-low asynchronous reset
+- cs (Input) : Chip select signal
+- wr_en (Input) : Write enable
+- rd_en (Input) : Read enable
+- data_in (Input) : Data input
+- data_out (Output) : Data output
+- empty (Output) : FIFO is empty
+- full (Output) : FIFO is full
+
+///////////////////////////////////////Internal Design////////////////////////////////////////////////
+
+Ive the FIFO buffer implemented using a register array here.
+Read and write pointers with MSB extra bit for full detection.
+Empty is asserted when write and read pointers match.
+Full is asserted when MSBs differ and lower bits match of both pointers.
+
+//////////////////////////////////////////////Utility Tasks/////////////////////////////////////////////
+
+1 write_data(input): Performs a write cycle
+2 read_data(): Performs a read cycle
+3 reset_dut(): Resets the design under test
+
+//////////////////////////////////////////Test Scenarios//////////////////////////////////////////////
+
+1) Normal Write/Read
+    -Write two values.
+    -Read them back sequentially.
+
+2) FIFO Full Condition
+    -Fill the FIFO completely.
+    -Attempt an overflow write.
+
+3) FIFO Empty Condition
+    -Read all entries until empty.
+    -Attempt an underflow read.
+
+4) Simultaneous Write/Read
+    -Write and read on the same clock edge.
+
+5) CS Low Prevention
+    -Operations should not occur when cs = 0.
+

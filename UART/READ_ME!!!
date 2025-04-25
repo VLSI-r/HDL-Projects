@@ -1,0 +1,70 @@
+UART Transmitter and Receiver
+
+This project implements a UART Transmitter and Receiver using Verilog. It includes a testbench for validation, loopback testing, and functional coverage. The design uses a baud-rate clock enable signal to control transmission and reception timing.
+I chose UART because serial communication is important between ip cores and peripherials!
+
+///////////////////////////////////////////// Modules ///////////////////////////////////////////////////////////////////////
+
+UART_RTL (Transmitter + Receiver)
+UART_TB  (Testbench)
+
+////////////////////////////////////////// Transmitter Module //////////////////////////////////////////////////////////////
+
+Inputs:
+
+- din : 8-bit input data to send
+- wr_en : Write enable signal
+- clk_50m : 50MHz main clock
+- clken : Baud-rate clock enable
+
+Outputs:
+
+- tx : Serial transmit output
+- tx_busy : Indicates ongoing transmission
+
+States:
+
+-IDLE : Waits for wr_en
+-START : Sends start bit
+-DATA : Sends 8 data bits
+-STOP : Sends stop bit
+
+//////////////////////////////////////////// Receiver Module ///////////////////////////////////////////////////////////////
+
+Inputs:
+
+-rx : Serial data input
+-clk_50m : 50MHz main clock
+-clken : Baud-rate clock enable
+
+Outputs:
+
+-dout : 8-bit output data
+-rd_done : Indicates data reception complete
+
+States:
+
+-IDLE : Waits for start bit
+-START : Transition phase
+-DATA : Receives 8 data bits
+-STOP : Finalizes reception
+
+//////////////////////////////////////////// Testbench Features /////////////////////////////////////////////////////////////
+
+- Loopback: tx connected to rx
+- Baud rate control using clock enable generation
+- send_byte task automates transmission and reception
+
+Coverage tracking:
+        - All 256 possible byte values
+        - FSM state coverage
+        - tx_busy signal activity
+
+
+///////////////////////////////////////////// Key Points ////////////////////////////////////////////////////////////////////
+
+- Simulates a realistic UART environment with loopback
+- Tracks data and FSM state coverage
+- Detects transmission errors
+- Demonstrates synchronization via clken
+- Ensures complete functional coverage 

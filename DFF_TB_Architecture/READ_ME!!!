@@ -1,0 +1,78 @@
+D Flip-Flop Verification using SystemVerilog
+
+This project verifies a D Flip-Flop (DFF) design using a UVM-like testbench written in SystemVerilog. It uses classes, interfaces, mailboxes, and events for structured simulation and verification.
+I chose to do this specific project for the followinf reasons : 
+
+-> This was fundamentally the foundation upon which i learnt UVM 
+-> This project bridged my knowledge gap in SystemVerilog by teaching me about mailboxes and interfaces
+-> This project helped me understand the power of OOPS in Verification 
+
+///////////////////////////////////////////////// Design Overview ////////////////////////////////////////////////////////////
+
+DUT (Design Under Test):
+A positive-edge-triggered D Flip-Flop with synchronous reset.
+
+always @(posedge clk)
+if (rst)
+dout <= 1'b0;
+else
+dout <= din;
+
+Interface: dff_if
+
+interface dff_if;
+logic clk;
+logic rst;
+logic din;
+logic dout;
+endinterface
+
+This connects the DUT to the testbench.
+
+//////////////////////////////////////////////// Testbench Components ////////////////////////////////////////////////////////
+
+1) Transaction
+     - Contains din and dout
+     - Has copy() and display() methods
+
+2) Generator
+    - Randomizes din
+    - Sends it to driver and scoreboard using mailboxes
+
+3) Driver
+    - Drives din into the DUT using the interface
+
+4) Monitor
+    - Samples dout from the DUT
+    - Sends data to the scoreboard
+
+5) Scoreboard
+    - Compares actual dout from DUT with expected din
+    - Logs match/mismatch
+
+6) Environment
+    - Connects all components
+    - Handles reset, starts/stops simulation
+
+//////////////////////////////////////////////// Simulation Flow /////////////////////////////////////////////////////////
+
+1. Generator creates stimulus (din)
+2. Driver applies input to DUT
+3. Monitor reads dout from DUT
+4. Scoreboard compares dout vs din
+5. Result is printed
+
+////////////////////////////////////////////////// Sample Output ///////////////////////////////////////////////////////////
+
+[GEN] : DIN : 1 DOUT : 0
+[DRV] : DIN : 1 DOUT : 0
+[MON] : DOUT : 1
+[SCO] : DATA MATCHED
+
+////////////////////////////////////////////////// Key Concepts /////////////////////////////////////////////////////////
+
+- introduction to UVM-style OOP testbench
+- Interface for DUT access
+- Mailboxes for data transfer
+- Events for sync
+- Modular, scalable design

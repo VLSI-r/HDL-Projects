@@ -3,14 +3,14 @@ Synchronous  Circular FIFO (First-In-First-Out) Buffer
 This project implements a synchronous FIFO using Verilog, including a robust testbench to validate functionality under different scenarios. The FIFO is parameterized to support varying depths and data widths.
 The reason why i chose a fifo is becouse fifos are used constantly in various CPU microarchitectures. So yeah :)
 
-////////////////////////////////////////////////Parameters//////////////////////////////////////////////
+//////////////////////////////////////////////// Parameters //////////////////////////////////////////////
 
 although its not necessasary to use a paramater here, ive done it to get used to good coding practices! and adding it makes the design more flexible and easily customizable! 
 
 - FIFO_DEPTH: Number of entries in the FIFO (default: 8)
 - DATA_WIDTH: Bit-width of each data word (default: 32)
 
-///////////////////////////////////////////////Ports///////////////////////////////////////////////////
+/////////////////////////////////////////////// Ports ///////////////////////////////////////////////////
 
 - clk (Input) : Clock signal
 - rst_n (Input) : Active-low asynchronous reset
@@ -22,20 +22,20 @@ although its not necessasary to use a paramater here, ive done it to get used to
 - empty (Output) : FIFO is empty
 - full (Output) : FIFO is full
 
-///////////////////////////////////////Internal Design////////////////////////////////////////////////
+/////////////////////////////////////// Internal Design ////////////////////////////////////////////////
 
-Ive the FIFO buffer implemented using a register array here.
-Read and write pointers with MSB extra bit for full detection.
-Empty is asserted when write and read pointers match.
-Full is asserted when MSBs differ and lower bits match of both pointers.
+- Ive the FIFO buffer implemented using a register array here.
+- Read and write pointers with MSB extra bit for full detection.
+- Empty is asserted when write and read pointers match.
+- Full is asserted when MSBs differ and lower bits match of both pointers.
 
-//////////////////////////////////////////////Utility Tasks/////////////////////////////////////////////
+////////////////////////////////////////////// Utility Tasks /////////////////////////////////////////////
 
-1 write_data(input): Performs a write cycle
-2 read_data(): Performs a read cycle
-3 reset_dut(): Resets the design under test
+1) write_data(input): Performs a write cycle
+2) read_data(): Performs a read cycle
+3) reset_dut(): Resets the design under test
 
-//////////////////////////////////////////Test Scenarios//////////////////////////////////////////////
+////////////////////////////////////////// Test Scenarios //////////////////////////////////////////////
 
 1) Normal Write/Read
     -Write two values.

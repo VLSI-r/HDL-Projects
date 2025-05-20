@@ -1,0 +1,81 @@
+
+
+HELLOOO  This repository contains an AXI-Stream Arbiter `AXIS_ARB` implementation using Verilog, developed and tested on AMD Xilinx Vivado.
+
+The arbiter takes in two AXI-Stream input sources and dynamically forwards the stream to a single AXI-Stream output interface. The design uses an FSM-based arbitration logic to ensure packet-level fairness, leveraging `tvalid`, `tready`, and `tlast` signals — just like a standard AXI-Stream master-slave handshaking mechanism.
+
+
+/////////////////////////////////////// MODULE FEATURES ////////////////////////////////////////////////////////
+
+- AXI4-Stream Compatible
+- Two Slave Inputs → One Master Output
+- Full-Packet Transfer (controlled via `tlast`)
+- Priority to Input 1 when both are valid
+- FSM-based arbitration logic
+
+/////////////////////////////////////////// INTERFACES //////////////////////////////////////////////////////////
+
+Inputs
+
+- `aclk`: Global clock
+- `aresetn`: Active-low reset
+- `s_axis_tvalid1`, `s_axis_tvalid2`: Valid signals from slave interfaces
+- `s_axis_tdata1`, `s_axis_tdata2`: 8-bit data from slave interfaces
+- `s_axis_tlast1`, `s_axis_tlast2`: End-of-packet indicators
+- `m_axis_tready`: Ready signal from the master interface
+
+Outputs
+
+- `s_axis_tready1`, `s_axis_tready2`: Always high (slaves always ready)
+- `m_axis_tvalid`: Output valid signal
+- `m_axis_tdata`: Output 8-bit data
+- `m_axis_tlast`: Output end-of-packet signal
+
+
+///////////////////////////////////////////////// FSM STATES /////////////////////////////////////////////////////
+
+1. IDLE – Wait for any `tvalid`
+2. FORWARD\_INPUT1 – Stream input1 until `tlast1`
+3. FORWARD\_INPUT2 – Stream input2 until `tlast2`
+
+Once a stream begins, it completes its entire packet before switching to the other, ensuring uninterrupted packet transfer.
+
+///////////////////////////////////////////////// TESTBENCH ////////////////////////////////////////////////////////////////////
+
+- Generates clock and reset
+- Simulates both input streams with `tvalid`, `tdata`, and `tlast`
+- Sends:
+    First packet from input 1
+    Second packet from input 2
+- Uses `$random` to generate data
+- Monitors arbitration behavior and packet delivery
+
+
+/////////////////////////////////////////////// SIMULATION INSTRUCTIONS ///////////////////////////////////////////////////////////
+
+1. Load both `axis_arb.v` and `tb_axis_arb.v` into your simulator (ModelSim, Icarus, etc.)
+2. Run the simulation
+3. Observe outputs using `$display` or waveform viewer (e.g., GTKWAVE, ModelSim)
+4. Confirm complete and correct packet transfer with no overlap
+
+////////////////////////////////////////////////// SIGNAL TIMING EXAMPLE /////////////////////////////////////////////////
+
+| tvalid1 = 1       | packet1 starts |
+| tlast1 = 1        | packet1 ends   |
+| tvalid2 = 1       | packet2 starts |
+| tlast2 = 1        | packet2 ends   |
+
+The arbiter respects AXI protocol: `tvalid` is asserted only when `tready` is high, and data transfer occurs only on a valid handshake.
+
+////////////////////////////////////////////////// CODE STRUCTURE ////////////////////////////////////////////////// 
+
+- `axis_arb.v` – Arbiter RTL module
+- `tb_axis_arb.v` – Functional testbench
+- `README.md` – This file
+
+////////////////////////////////////////////////// KEY LEARNING OUTCOMES ////////////////////////////////////////////////// 
+
+- AXI Stream protocol
+- FSM design with packet-aware logic
+- Arbitration and fairness techniques
+- Testbench writing and functional validation

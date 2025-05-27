@@ -1,0 +1,136 @@
+ module tb_axilite_m;
+ 
+    reg         new_tx = 0;
+    wire        wr_timeout, rd_timeout; 
+    reg         wr;
+    reg  [31:0] waddr;
+    reg  [31:0] raddr;
+    reg  [31:0] din;
+    wire [31:0] dout;
+    wire  [1:0] resp;
+ 
+    reg         m_axi_aclk;
+    reg         m_axi_aresetn;
+    wire        m_axi_awvalid;
+    reg         m_axi_awready;
+    wire [31:0] m_axi_awaddr;
+    wire  [1:0] m_axi_awprot;
+ 
+    wire        m_axi_wvalid;
+    reg         m_axi_wready;
+    wire [31:0] m_axi_wdata;
+    wire  [3:0] m_axi_wstrb;
+ 
+    reg         m_axi_bvalid;
+    wire        m_axi_bready;
+    reg  [1:0]  m_axi_bresp;
+ 
+    wire        m_axi_arvalid;
+    reg         m_axi_arready;
+    wire [31:0] m_axi_araddr;
+    wire  [1:0] m_axi_arprot;
+ 
+    reg         m_axi_rvalid;
+    wire        m_axi_rready;
+    reg  [31:0] m_axi_rdata;
+    reg  [1:0]  m_axi_rresp;
+ 
+    axilite_m uut (
+        .new_tx(new_tx),
+        .wr_timeout(wr_timeout),
+        .rd_timeout(rd_timeout),
+        .wr(wr),
+        .waddr(waddr),
+        .raddr(raddr),
+        .din(din),
+        .dout(dout),
+        .resp(resp),
+        .m_axi_aclk(m_axi_aclk),
+        .m_axi_aresetn(m_axi_aresetn),
+        .m_axi_awvalid(m_axi_awvalid),
+        .m_axi_awready(m_axi_awready),
+        .m_axi_awaddr(m_axi_awaddr),
+        .m_axi_wvalid(m_axi_wvalid),
+        .m_axi_wready(m_axi_wready),
+        .m_axi_wdata(m_axi_wdata),
+        .m_axi_wstrb(m_axi_wstrb),
+        .m_axi_bvalid(m_axi_bvalid),
+        .m_axi_bready(m_axi_bready),
+        .m_axi_bresp(m_axi_bresp),
+        .m_axi_arvalid(m_axi_arvalid),
+        .m_axi_arready(m_axi_arready),
+        .m_axi_araddr(m_axi_araddr),
+        .m_axi_rvalid(m_axi_rvalid),
+        .m_axi_rready(m_axi_rready),
+        .m_axi_rdata(m_axi_rdata),
+        .m_axi_rresp(m_axi_rresp)
+    );
+ 
+    // Clock generation
+    always #5 m_axi_aclk = ~m_axi_aclk;
+ 
+    integer i = 0;
+    initial begin
+        // Initialize signals
+        m_axi_aclk = 0;
+        m_axi_aresetn = 0;
+        wr = 0;
+        waddr = 32'h0;
+        raddr = 32'h0;
+        din = 32'h0;
+        m_axi_awready = 0;
+        m_axi_wready = 0;
+        m_axi_bvalid = 0;
+        m_axi_bresp = 2'b00;
+        m_axi_arready = 0;
+        m_axi_rvalid = 0;
+        m_axi_rdata = 32'h0;
+        m_axi_rresp = 2'b00;
+ 
+        // Reset sequence
+        #10;
+        m_axi_aresetn = 1;
+ 
+        
+        for (i = 0; i < 10; i = i + 1) begin
+            @(posedge m_axi_aclk);
+            new_tx = 1'b1;
+            wr = 1;
+            waddr = i;
+            din = i;
+            repeat(7) @(posedge m_axi_aclk);
+            new_tx = 0;
+            m_axi_awready = 1;
+            m_axi_wready = 1;
+            repeat(7) @(posedge m_axi_aclk);
+            m_axi_awready = 0;
+            m_axi_wready = 0;
+            m_axi_bvalid = 1;
+            m_axi_bresp = 2'b00;
+            @(posedge m_axi_aclk);
+            m_axi_bvalid = 0;
+        end
+ 
+       
+        for (i = 0; i < 10; i = i + 1) begin
+            @(posedge m_axi_aclk);
+            new_tx = 1;
+            wr = 0;
+            raddr = i;
+            repeat(8) @(posedge m_axi_aclk);
+            new_tx = 0;
+            m_axi_arready = 1;
+            m_axi_rdata = 5;
+            m_axi_rresp = 2'b00;
+            m_axi_rvalid = 1;
+            @(posedge m_axi_aclk);
+            m_axi_arready = 0;
+            m_axi_rvalid = 0;
+            m_axi_rdata = 0;
+            m_axi_rresp = 2'b00;
+        end
+ 
+        $finish;
+    end
+ 
+endmodule

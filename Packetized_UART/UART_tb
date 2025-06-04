@@ -1,0 +1,69 @@
+`timescale 1ns/1ps
+
+module tb_uart_system_top;
+
+    parameter CLK_FREQ = 50_000_000;
+    parameter BAUD_RATE = 115200;
+
+    reg clk;
+    reg rst;
+    reg [7:0] data_in;
+    reg data_valid;
+    reg tx_ready;
+
+    wire serial_out;
+    wire Tx_busy;
+    wire fifo_full;
+
+    // Instantiate the DUT
+    uart_system_top #(
+        .CLK_FREQ(CLK_FREQ),
+        .BAUD_RATE(BAUD_RATE)
+    ) dut (
+        .clk(clk),
+        .rst(rst),
+        .data_in(data_in),
+        .data_valid(data_valid),
+        .tx_ready(tx_ready),
+        .serial_out(serial_out),
+        .Tx_busy(Tx_busy),
+        .fifo_full(fifo_full)
+    );
+
+    initial clk = 0;			
+    always #10 clk = ~clk;		                 ////// 50mhz clock so 20ns period ///////
+
+
+
+    initial begin
+        
+        
+        rst = 1;
+        data_in = 8'd0;
+        data_valid = 0;
+        tx_ready = 1;  
+
+        
+        #100;
+        rst = 0;
+
+        
+        #10000;
+        data_in = 8'hA5;
+        data_valid = 1;
+        #20000;
+        data_valid = 0;
+
+        
+        #20000;
+        data_in = 8'h3C;
+        data_valid = 1;
+        #20000;
+        data_valid = 0;
+
+        #200000;
+
+        $finish;
+    end
+
+endmodule

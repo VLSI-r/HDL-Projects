@@ -1,0 +1,291 @@
+//////////////////////////////////////// FIFO ///////////////////////////////////////////////////////
+
+module sync_fifo #(
+    parameter DATA_WIDTH = 8,
+    parameter FIFO_DEPTH = 16,
+    parameter ADDR_WIDTH = 4  // log2(FIFO_DEPTH)
+)(
+    input wire clk,
+    input wire rst,
+    input wire wr_en,
+    input wire [DATA_WIDTH-1:0] data_in,
+    input wire rd_en,
+    output reg [DATA_WIDTH-1:0] data_out,
+    output reg data_out_valid,
+    output wire fifo_full,
+    output wire fifo_empty
+);
+
+    reg [DATA_WIDTH-1:0] fifo_mem [0:FIFO_DEPTH-1];
+    reg [ADDR_WIDTH:0] wr_ptr, rd_ptr;
+
+    always @(posedge clk) begin
+        if (rst) begin
+            wr_ptr <= 0;
+            rd_ptr <= 0;
+        end else begin
+            if (wr_en && !fifo_full)
+                wr_ptr <= wr_ptr + 1;
+            if (rd_en && !fifo_empty)
+                rd_ptr <= rd_ptr + 1;
+        end
+    end
+
+    always @(posedge clk) begin
+        if (wr_en && !fifo_full)
+            fifo_mem[wr_ptr[ADDR_WIDTH-1:0]] <= data_in;
+    end
+
+    always @(posedge clk) begin
+        if (rst) begin
+            data_out <= 0;
+            data_out_valid <= 0;
+        end else if (rd_en && !fifo_empty) begin
+            data_out <= fifo_mem[rd_ptr[ADDR_WIDTH-1:0]];
+            data_out_valid <= 1;
+        end else begin
+            data_out_valid <= 0;
+        end
+    end
+
+    assign fifo_empty = (wr_ptr == rd_ptr);
+    assign fifo_full = (wr_ptr[ADDR_WIDTH-1:0] == rd_ptr[ADDR_WIDTH-1:0]) &&
+                       (wr_ptr[ADDR_WIDTH] != rd_ptr[ADDR_WIDTH]);
+
+endmodule
+
+//////////////////////////////////////// FSM ///////////////////////////////////////////////////////
+
+module packetizer_fsm (
+    input wire clk,
+    input wire rst,
+    input wire tx_ready,
+    input wire [7:0] data_out,
+    input wire data_out_valid,
+    input wire fifo_empty,
+    input wire tx_done,
+    output reg rd_en,
+    output reg [7:0] tx_data,
+    output reg send_start
+);
+
+    typedef enum reg [1:0] {
+        IDLE    = 2'b00,
+        READ    = 2'b01,
+        WAIT_TX = 2'b10
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk) begin
+        if (rst)
+            current_state <= IDLE;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        case (current_state)
+            IDLE:    next_state = (!fifo_empty && tx_ready) ? READ : IDLE;
+            READ:    next_state = data_out_valid ? WAIT_TX : READ;
+            WAIT_TX: next_state = tx_done ? IDLE : WAIT_TX;
+            default: next_state = IDLE;
+        endcase
+    end
+
+    always @(posedge clk) begin
+        if (rst) begin
+            rd_en <= 0;
+            send_start <= 0;
+            tx_data <= 0;
+        end else begin
+            case (current_state)
+                IDLE: begin
+                    rd_en <= (!fifo_empty && tx_ready);
+                    send_start <= 0;
+                end
+                READ: begin
+                    rd_en <= 0;
+                    if (data_out_valid) begin
+                        tx_data <= data_out;
+                        send_start <= 1;
+                    end
+                end
+                WAIT_TX: send_start <= 0;
+                default: begin
+                    rd_en <= 0;
+                    send_start <= 0;
+                end
+            endcase
+        end
+    end
+
+endmodule
+
+//////////////////////////////////////// UART ///////////////////////////////////////////////////////
+
+module uart_tx #(
+    parameter CLK_FREQ = 50_000_000,
+    parameter BAUD_RATE = 115200
+)(
+    input wire clk,
+    input wire rst,
+    input wire send_start,
+    input wire [7:0] tx_data,
+    output reg tx_done,
+    output reg tx_busy,
+    output reg serial_out
+);
+
+    localparam BAUD_DIV = CLK_FREQ / BAUD_RATE;
+    localparam BAUD_WIDTH = $clog2(BAUD_DIV);
+
+    reg [BAUD_WIDTH-1:0] baud_counter;
+    reg baud_tick;
+
+    always @(posedge clk) begin
+        if (rst) begin
+            baud_counter <= 0;
+            baud_tick <= 0;
+        end else if (baud_counter == BAUD_DIV - 1) begin
+            baud_counter <= 0;
+            baud_tick <= 1;
+        end else begin
+            baud_counter <= baud_counter + 1;
+            baud_tick <= 0;
+        end
+    end
+
+    typedef enum reg [2:0] {
+        TX_IDLE  = 3'b000,
+        TX_START = 3'b001,
+        TX_DATA  = 3'b010,
+        TX_STOP  = 3'b011,
+        TX_DONE  = 3'b100
+    } tx_state_t;
+
+    tx_state_t tx_state;
+    reg [2:0] bit_counter;
+    reg [7:0] shift_reg;
+
+    always @(posedge clk) begin
+        if (rst) begin
+            tx_state <= TX_IDLE;
+            serial_out <= 1;
+            tx_busy <= 0;
+            tx_done <= 0;
+            bit_counter <= 0;
+            shift_reg <= 0;
+        end else begin
+            case (tx_state)
+                TX_IDLE: begin
+                    serial_out <= 1;
+                    tx_busy <= 0;
+                    tx_done <= 0;
+                    if (send_start) begin
+                        tx_state <= TX_START;
+                        tx_busy <= 1;
+                        shift_reg <= tx_data;
+                        bit_counter <= 0;
+                    end
+                end
+                TX_START: if (baud_tick) begin
+                    serial_out <= 0;
+                    tx_state <= TX_DATA;
+                end
+                TX_DATA: if (baud_tick) begin
+                    serial_out <= shift_reg[0];
+                    shift_reg <= shift_reg >> 1;
+                    bit_counter <= bit_counter + 1;
+                    if (bit_counter == 7)
+                        tx_state <= TX_STOP;
+                end
+                TX_STOP: if (baud_tick) begin
+                    serial_out <= 1;
+                    tx_state <= TX_DONE;
+                end
+                TX_DONE: begin
+                    tx_done <= 1;
+                    tx_busy <= 0;
+                    tx_state <= TX_IDLE;
+                end
+                default: tx_state <= TX_IDLE;
+            endcase
+        end
+    end
+
+endmodule
+
+//////////////////////////////////////// TOP MODULE ///////////////////////////////////////////////////////
+
+module uart_system_top #(
+    parameter CLK_FREQ = 50_000_000,
+    parameter BAUD_RATE = 115200
+)(
+    input wire clk,
+    input wire rst,
+    input wire [7:0] data_in,
+    input wire data_valid,
+    input wire tx_ready,
+    output wire serial_out,
+    output wire Tx_busy,
+    output wire fifo_full
+);
+
+    wire wr_en = data_valid;
+    wire rd_en;
+    wire [7:0] fifo_data_out;
+    wire fifo_data_out_valid;
+    wire fifo_empty;
+
+    wire [7:0] uart_tx_data;
+    wire uart_send_start;
+    wire uart_tx_done;
+
+    sync_fifo #(
+        .DATA_WIDTH(8),
+        .FIFO_DEPTH(16),
+        .ADDR_WIDTH(4)
+    ) fifo_inst (
+        .clk(clk),
+        .rst(rst),
+        .wr_en(wr_en),
+        .data_in(data_in),
+        .rd_en(rd_en),
+        .data_out(fifo_data_out),
+        .data_out_valid(fifo_data_out_valid),
+        .fifo_full(fifo_full),
+        .fifo_empty(fifo_empty)
+    );
+
+    packetizer_fsm fsm_inst (
+        .clk(clk),
+        .rst(rst),
+        .tx_ready(tx_ready),
+        .data_out(fifo_data_out),
+        .data_out_valid(fifo_data_out_valid),
+        .fifo_empty(fifo_empty),
+        .tx_done(uart_tx_done),
+        .rd_en(rd_en),
+        .tx_data(uart_tx_data),
+        .send_start(uart_send_start)
+    );
+
+    uart_tx #(
+        .CLK_FREQ(CLK_FREQ),
+        .BAUD_RATE(BAUD_RATE)
+    ) uart_inst (
+        .clk(clk),
+        .rst(rst),
+        .send_start(uart_send_start),
+        .tx_data(uart_tx_data),
+        .tx_done(uart_tx_done),
+        .tx_busy(Tx_busy),
+        .serial_out(serial_out)
+    );
+
+endmodule
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//// Author: Mohammed Omer
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
